@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>JS</title>
+	<style type="text/css">
+
+		.todolist {
+			border: solid 1px black;
+			min-height: 50px;
+			margin: 5px 0;
+		}
+		.toolbar {
+			margin-bottom: 10px;
+			padding-bottom: 10px;
+			border-bottom: solid 1px gray;
+		}
+		.toolbar a {
+			text-decoration: none;
+			display: inline-block;
+			padding: 2px 5px;
+			border: solid 1px gray;
+			margin-right: 5px;
+
+		}
+		.toolbar a.active{
+			border: solid 2px blue;
+			padding: 1px 4px;
+		}
+		.danger {
+			color: red;
+		}
+		.done {
+			cursor: pointer;
+			user-select: none;
+		}
+		[v-cloak] {
+			display: none;
+		}
+
+	</style>
+</head>
+<body>
+
+	<div id="app" v-cloak>  <!-- v-cloak не отображает отмеченные элементы, пока контент не загрузится-->
+		<div class="toolbar">
+			<a href=""
+				v-on:click.prevent="showList()"
+				v-bind:class="{active: screen === 'list'}"
+				>Items</a>
+			<a href="" 
+				v-on:click.prevent="showForm($event)"
+				v-bind:class="{active: screen === 'form'}"
+				v-if="mode === 'creating'"
+				>Add item</a>
+			<a href="" 
+				v-on:click.prevent="editItem(task)"
+				v-bind:class="{active: screen === 'form'}"
+				v-if="mode === 'editing'"
+				>Edit item</a>
+		</div>
+
+		<div class="item-form" v-if="screen === 'form'">
+			<form>
+				Task name:
+				<input type="text" v-model="task.name">
+				<span v-if="errors.name" class="danger">  {{errors.name}}</span>
+				<br>
+				Description:
+				<input type="text" v-model="task.description">
+				<span v-if="errors.description" class="danger"> {{errors.description}} </span>
+				<br>
+				Type:
+				<select v-model="task.type">
+					<option v-for="(label, key) in types" v-bind:value="key"> {{label}} </option>
+				</select>
+				<br>
+				Is prio?
+				<input type="checkbox" v-model="task.prio"> {{ task.prio | prio }}
+				<br>
+				<br>
+				<button type="button" v-on:click="addItem()" v-if="mode === 'creating'">create</button>
+				<button type="button" v-on:click="saveItem()" v-if="mode === 'editing'">save</button>
+			</form>
+
+			<!-- <pre>{{ task }}</pre> -->
+		</div>
+
+		<div class="todolist" v-if="screen === 'list'">
+			<table border="1"  width="100%">
+				<thead>
+					<tr>
+						<th>#</th>
+						<th>Done?</th>
+						<th>Is Prio?</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Desc</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="(item, index) in items">
+						<td> {{ index + 1 }} </td>
+						<td>
+							<span class="done" v-on:click="makeDone(item)">{{ item.done ? '✅' : '⬜'}}</span>
+						</td>
+						<td> {{ item.prio | prio }} </td>
+						<td> {{ item.name }} </td>
+						<td>
+							<span v-for="(name, type) in types" v-text="name" v-if="item.type === type"></span>
+						</td>
+						<td> {{item.description}}</td>
+						<td>
+							<button type="button" v-on:click="editItem(item)">edit</button>
+							<button type="button" v-on:click="delItem(index)">del</button>
+						</td>
+					</tr>
+					
+				</tbody>
+			</table>
+			<div v-else>
+				<em> no items!</em>
+			</div>
+		</div>
+	</div>
+
+
+	<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+
+	<script>
+		
+		new Vue({
+			el: "#app",
+			data: {
+				types: {
+					call: 'Call',
+					meeting: 'Meeting',
+					task: 'Task'
+				},
+				screen: 'list',
+				mode: 'creating',
+				editingItem: {},
+				errors: {},
+				task: {
+					name:'',
+					description:'',
+					type: '',
+					prio: false,
+					done: false,
+				},
+				items: [
+					
+				]
+			},
+			filters: {
+				prio: function(value)
+				{
+					return value ? '📌' : '';
+				}
+			},
+			watch: {
+				screen: function() {
+					console.log(this.screen);
+				}
+			},
+			methods: {
+				showForm: function(e) {
+					this.screen = 'form';
+					this.mode = 'creating';
+					this.task = {
+							name: '',
+							description: '',
+							type: '',
+							prio: false,
+							done: false,
+						};
+				},
+				showList: function(e) {
+					this.screen = 'list';
+					this.mode = 'creating';
+				},
+				updateList: function() {
+					if (this.task.name){
+						Object.assign(this.editingItem, this.task);
+						this.editingItem = {};
+						this.showList();
+					}
+				},
+				addItem: function() {
+					this.errors =  {};
+					if (!this.task.name)
+					{
+						this.errors.name = " Required";
+						return
+					}
+					this.items.push(this.task);
+					this.task = {
+						name: '',
+						description: '',
+						type: '',
+						prio: false,
+						done: false,
+					};
+					this.showList();
+					
+				},
+				saveItem: function() {
+					this.errors = {};
+					if (!this.task.name)
+					{
+						this.errors.name = 'Required';
+						return
+					}
+					Object.assign(this.editingItem, this.task);
+					this.editingItem = {};
+					this.showList();
+					
+				},
+				makeDone: function(item) {
+					item.done = !item.done;
+				},
+				editItem: function(item) {
+					this.showForm();
+					this.editingItem = item;
+					this.task = Object.assign({}, item);
+					this.mode = 'editing';
+					
+				},
+				delItem: function(index) {
+					this.items.splice(index, 1);
+				}
+			}
+
+		});
+			
+	</script>
+</body>
+</html>
+
+<!-- ? npmjs vue color -->
